@@ -13,26 +13,13 @@ const companies = require('./env.json');
 const uploadfile = require('./ftp');
 const screenshot = require('screenshot-desktop')
 const { sendMessageTelegram, sendPictureTelegram } = require('./telegram')
+const { sendMessageWhatsApp } = require('./whatsapp')
 
 app.use(express.json());
 app.use(express.urlencoded({
     extended: true
 }));
 var dir = process.cwd()
-puppeteer.use(require('puppeteer-extra-plugin-user-preferences')
-    (
-        {
-            userPrefs: {
-                download: {
-                    prompt_for_download: false,
-                    open_pdf_in_system_reader: true,
-                    default_directory: dir,
-                },
-                plugins: {
-                    always_open_pdf_externally: true
-                },
-            }
-        }));
 
 const saveCookies = async (data) => {
     let cookies = []
@@ -52,21 +39,17 @@ const login = async (COMPANY, D = null) => {
     }
 
     await sendMessageTelegram(null, 'Iniciando BOT');
+    await sendMessageWhatsApp('Iniciando BOT');
 
     const data = companies.find(x => x.COMPANY == COMPANY)
 
     const browser = await puppeteer.launch({
-        //args: ['--disable-features=site-per-process'],
+    
         headless: false,
         ignoreHTTPSErrors: true,
-        //executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-        args: [
-            // '--auto-open-devtools-for-tabs',
-            '--disable-dev-shm-usage',
-            '--disable-save-password-bubble'
-        ],
+       
         userDataDir: './session/' + data.COMPANY,
-        ignoreDefaultArgs: ["--disable-extensions", "--enable-automation"]
+       
     });
 
 
@@ -74,23 +57,12 @@ const login = async (COMPANY, D = null) => {
 
     const navigationPromise = page.waitForNavigation();
     await page.setViewport({ width: 1366, height: 768 });
-    // await page.setViewport({
-    //     width: 800,
-    //     height: 600
-    // });
-    //-----------------
 
-    const readCookie = fs.readFileSync('cookies.txt', 'utf8');
 
-    const parseCookie = JSON.parse(readCookie)
-
-    await page.setCookie(...parseCookie)
-
-    //-------------------
     await sendMessageTelegram(null, 'Accediendo a la web');
+    await sendMessageWhatsApp('Accediendo a la web');
     await page.goto('https://magnavoz-us.digitalkcloud.com/Login');
-
-    // await sendMessageTelegram(null,'Ingresando credenciales');
+   
 
     const loginInput = await page.waitForSelector('#Username');
 
@@ -104,15 +76,19 @@ const login = async (COMPANY, D = null) => {
 
     await page.click('#LoginButton');
 
-    await page.waitForSelector(".breadcrumb-item");
+    await page.waitForSelector(".breadcrumb-item").catch(async (err) => {
+        await screenShotAndSendTelegram(page, 'Error');
+        await sendMessageTelegram(null, 'finalizando proceso');
+        await sendMessageWhatsApp('finalizando proceso');
+        await delay(3000)
+        process.exit(1);
+    });
     //KOBSA
     //await page.goto('https://magnavoz-us.digitalkcloud.com/Reporting/BIReports/cdrs.html#A2021-10-14%2000%3A00%3A00:2021-10-14%2023%3A59%3A59/-300/asig_carrier_group=cc%20Kobsa%20Prepago'
     await sendMessageTelegram(null, 'Accediendo al reporte precargado');
-
-    //kobsa dias atras
-
+    await sendMessageWhatsApp('Accediendo al reporte precargado');
     if (COMPANY == 'KOBSA') {
-        if (D > 0) {
+        if (D != null) {
             let date_ob = new Date();
             if (D != null) {
                 date_ob.setDate(date_ob.getDate() - Number(D));
@@ -120,8 +96,6 @@ const login = async (COMPANY, D = null) => {
             let date = ("0" + date_ob.getDate()).slice(-2);
             let month = ("0" + (date_ob.getMonth() + 1)).slice(-2);
             let year = date_ob.getFullYear();
-
-            //${year}${month}${date}
 
             await page.goto(`https://magnavoz-us.digitalkcloud.com/Reporting/BIReports/cdrs.html#A${year}-${month}-${date}%2000%3A00%3A00:${year}-${month}-${date}%2023%3A59%3A59/-300/asig_carrier_group=cc%20Kobsa%20Prepago`
                 , {
@@ -137,8 +111,6 @@ const login = async (COMPANY, D = null) => {
         );
     }
 
-
-
     // await page.screenshot({ path: `./screenshots/github-profile.jpeg` });
     await screenShotAndSendTelegram(page, 'Reporte precargado');
 
@@ -149,8 +121,6 @@ const login = async (COMPANY, D = null) => {
     await page.waitForResponse(response => response.status() === 200)
 
     console.log('cargo 200')
-
-
 
     const ExportTemplates = await page.waitForSelector('#ExportTemplates', {
         visible: true,
@@ -175,12 +145,15 @@ const login = async (COMPANY, D = null) => {
     // console.log(chFile)
     if (chFile) {
         await sendMessageTelegram(null, 'archivo descargado, iniciando carga al ftp');
+        await sendMessageWhatsApp('archivo descargado, iniciando carga al ftp');
         console.log('exitoso,Iniciando subida');
         let res = await uploadFile(data,D);
         if (res) {
             await sendMessageTelegram(null, 'archivo cargado.');
+            await sendMessageWhatsApp('archivo cargado.');
             console.log('datos subidos')
             await sendMessageTelegram(null, 'finalizando proceso');
+            await sendMessageWhatsApp('finalizando proceso');
             process.exit(1)
         }
     }
@@ -212,8 +185,6 @@ const checkFile = async (data, D = null) => {
 
 
     const oldPath = `cdrs_${year}${month}${date}_050000.csv`
-
-    console.log('esperando a:',oldPath)
     // console.log(oldPath)
     const newPath = `C:/tmp/${data.COMPANY}/${year}/${month}/${date}/${year}${month}${date}.csv`
     const directory = `C:/tmp/${data.COMPANY}/${year}/${month}/${date}/`
@@ -250,7 +221,7 @@ const checkFile = async (data, D = null) => {
 }
 
 const uploadFile = async (data, D = null) => {
-    
+    console.log(D)
     let date_ob = new Date();
     if (D != null) {
         date_ob.setDate(date_ob.getDate() - Number(D));
@@ -265,8 +236,6 @@ const uploadFile = async (data, D = null) => {
 
     // console.log(oldPath)
     const path = `C:/tmp/${data.COMPANY}/${year}/${month}/${date}/${year}${month}${date}.csv`
-
-    console.log('subiendo:',path)
 
     if (data.COMPANY == "KOBSA") {
         return await uploadfile(path, `${data.FTP_FOLDER_MAIN}/${year}/${month}/`, `${year}${month}${date}.csv`, data.FTP_CN);
@@ -286,13 +255,9 @@ const screenShotAndSendTelegram = async (page, message, all = false) => {
         await page.screenshot({ path: rute });
     }
     
-    await sendPictureTelegram(null, rute, message)
-}
+    await sendPictureTelegram(null, rute, message);
 
-const testScreenShot = async()=>{
-    let rute = `./screenshots/picture_kobsa.jpeg`;
-
-    screenshot({ filename: rute })
+    await sendMessageWhatsApp(message,true,rute);
 }
 
 const getArgs = async () => {
@@ -332,6 +297,5 @@ const getArgs = async () => {
 }
 
 getArgs();
-// testScreenShot();
 
 //login();
