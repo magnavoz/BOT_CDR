@@ -21,25 +21,16 @@ app.use(express.urlencoded({
 }));
 var dir = process.cwd()
 
-const saveCookies = async (data) => {
-    let cookies = []
-    data.map(value => {
-        cookies.push(value)
-    })
-
-    fs.writeFile('cookies.txt', JSON.stringify(cookies), (err) => {
-        if (err) return console.error(err);
-    });
-}
-
 const login = async (COMPANY, D = null) => {
+
+    console.log(COMPANY,D)
 
     if (!fs.existsSync("screenshots")) {
         fs.mkdirSync("screenshots");
     }
 
-    await sendMessageTelegram(null, 'Iniciando BOT');
-    await sendMessageWhatsApp('Iniciando BOT');
+    await sendMessageTelegram(null, 'Iniciando BOT '+COMPANY);
+    await sendMessageWhatsApp('Iniciando BOT '+COMPANY);
 
     const data = companies.find(x => x.COMPANY == COMPANY)
 
@@ -92,6 +83,7 @@ const login = async (COMPANY, D = null) => {
             let date_ob = new Date();
             if (D != null) {
                 date_ob.setDate(date_ob.getDate() - Number(D));
+                console.log("ejecutando:", date_ob.getDate())
             }
             let date = ("0" + date_ob.getDate()).slice(-2);
             let month = ("0" + (date_ob.getMonth() + 1)).slice(-2);
@@ -103,7 +95,9 @@ const login = async (COMPANY, D = null) => {
                 }
             );
         }
-    } else {
+    } 
+    
+    if(COMPANY == 'RECSA') {
         await page.goto(data.LINK
             , {
                 waitUntil: 'networkidle0',
@@ -147,15 +141,26 @@ const login = async (COMPANY, D = null) => {
         await sendMessageTelegram(null, 'archivo descargado, iniciando carga al ftp');
         await sendMessageWhatsApp('archivo descargado, iniciando carga al ftp');
         console.log('exitoso,Iniciando subida');
-        let res = await uploadFile(data,D);
-        if (res) {
-            await sendMessageTelegram(null, 'archivo cargado.');
-            await sendMessageWhatsApp('archivo cargado.');
-            console.log('datos subidos')
-            await sendMessageTelegram(null, 'finalizando proceso');
-            await sendMessageWhatsApp('finalizando proceso');
-            process.exit(1)
+        try {
+            let res = await uploadFile(data,D);
+            if (res) {
+                await sendMessageTelegram(null, 'archivo cargado.');
+                await sendMessageWhatsApp('archivo cargado.');
+                console.log('datos subidos')
+                await sendMessageTelegram(null, 'finalizando proceso');
+                await sendMessageWhatsApp('finalizando proceso');         
+                process.exit(0)
+            } else{
+                await sendMessageTelegram(null, 'Error al subir fichero');
+                await sendMessageWhatsApp('Error al subir fichero');  
+                process.exit(0)
+            }
+        } catch (err) {
+            await sendMessageWhatsApp('Error al subir fichero'+err);
+            await sendMessageWhatsApp('Fin del proceso');
+            process.exit(0) 
         }
+        
     }
 
 
@@ -183,8 +188,16 @@ const checkFile = async (data, D = null) => {
     let month = ("0" + (date_ob.getMonth() + 1)).slice(-2);
     let year = date_ob.getFullYear();
 
+    let oldPath ="";
+    if(data.COMPANY=="RECSA"){
+        date = "01";
+        oldPath = `cdrs_${year}${month}${date}_000000.csv`
+    }else{
+        oldPath = `cdrs_${year}${month}${date}_050000.csv`
+    } 
 
-    const oldPath = `cdrs_${year}${month}${date}_050000.csv`
+
+    //const oldPath = `cdrs_${year}${month}${date}_050000.csv`
     // console.log(oldPath)
     const newPath = `C:/tmp/${data.COMPANY}/${year}/${month}/${date}/${year}${month}${date}.csv`
     const directory = `C:/tmp/${data.COMPANY}/${year}/${month}/${date}/`
@@ -221,27 +234,31 @@ const checkFile = async (data, D = null) => {
 }
 
 const uploadFile = async (data, D = null) => {
-    console.log(D)
-    let date_ob = new Date();
-    if (D != null) {
-        date_ob.setDate(date_ob.getDate() - Number(D));
+    try {
+        console.log(D)
+        let date_ob = new Date();
+        if (D != null) {
+            date_ob.setDate(date_ob.getDate() - Number(D));
+        }
+        let date = ("0" + date_ob.getDate()).slice(-2);
+        let month = ("0" + (date_ob.getMonth() + 1)).slice(-2);
+        let year = date_ob.getFullYear();
+        // console.log(oldPath)
+        if(data.COMPANY=="RECSA"){
+            date = "01";            
+        }
+
+        const path = `C:/tmp/${data.COMPANY}/${year}/${month}/${date}/${year}${month}${date}.csv`
+
+        if (data.COMPANY == "KOBSA") {
+            return await uploadfile(path, `${data.FTP_FOLDER_MAIN}/${year}/${month}/`, `${year}${month}${date}.csv`, data.FTP_CN);
+        } else {
+            return await uploadfile(path, `${data.FTP_FOLDER_MAIN}/${year}/`, `${year}${month}${date}.csv`, data.FTP_CN);
+        } 
+    } catch (ex) {
+        throw ex
     }
-    let date = ("0" + date_ob.getDate()).slice(-2);
-    let month = ("0" + (date_ob.getMonth() + 1)).slice(-2);
-    let year = date_ob.getFullYear();
-
-
-
-
-
-    // console.log(oldPath)
-    const path = `C:/tmp/${data.COMPANY}/${year}/${month}/${date}/${year}${month}${date}.csv`
-
-    if (data.COMPANY == "KOBSA") {
-        return await uploadfile(path, `${data.FTP_FOLDER_MAIN}/${year}/${month}/`, `${year}${month}${date}.csv`, data.FTP_CN);
-    } else {
-        return await uploadfile(path, `${data.FTP_FOLDER_MAIN}/${year}/${month}/${date}/`, `${year}${month}${date}.csv`, data.FTP_CN);
-    }
+    
 
 
 

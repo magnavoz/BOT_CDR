@@ -4,7 +4,7 @@ const {API} = require('./connect')
 const imageToBase64 = require('image-to-base64');
 
 const sendMessageWhatsApp = async (message=null,isImage=false,img=null) => {
-    
+    return;
     //var img = './screenshots/picture_kobsa.jpeg';
     let image = "";
     const options = {
@@ -19,7 +19,7 @@ const sendMessageWhatsApp = async (message=null,isImage=false,img=null) => {
     
 
     var data = {
-        id:"P-927019771",  
+        id:"P-941693555",  
         numbers:
         [
             {
@@ -32,7 +32,7 @@ const sendMessageWhatsApp = async (message=null,isImage=false,img=null) => {
     }
     //console.log(image)
     let body = JSON.stringify(data)
-    requestAll(API.WHATSAPP.SEND,data)
+    await requestAll(API.WHATSAPP.SEND,data)
     .then((res) => {
 
         console.log('respuesta:',res);
