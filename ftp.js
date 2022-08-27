@@ -7,18 +7,18 @@ const uploadfile = async(path,to,file,cn) =>{
     let sftp = new Client();
     let res = "";
     await sftp.connect(cn).then(async() => {
-        return (sftp.list(to));
-        let option = {
-            flags: 'w',  // w - write and a - append
-            encoding: null, // use null for binary files
-            mode: 0o666, // mode to use for created file (rwx)
-            autoClose: true // automatically close the write stream when finished
-          }
-          try {
-            sftp.mkdir(to, true).catch(err=>console.log('error: ',err.code));
-          }catch(err) {
-              console.log("error al crear directorio")
-          }
+        //return (sftp.list(to));
+        // let option = {
+        //     flags: 'w',  // w - write and a - append
+        //     encoding: null, // use null for binary files
+        //     mode: 0o666, // mode to use for created file (rwx)
+        //     autoClose: true // automatically close the write stream when finished
+        //   }
+        //   try {
+        //     sftp.mkdir(to, true).catch(err=>console.log('error: ',err.code));
+        //   }catch(err) {
+        //       console.log("error al crear directorio")
+        //   }
         
         return await new Promise(resolve => {
             setTimeout(() => {
@@ -31,18 +31,19 @@ const uploadfile = async(path,to,file,cn) =>{
     .then(data => {
         res = true;
         //console.log(data, 'the data info'); 
-        data.forEach(res => {
-            //console.log(file)
-            if(res.type=='-' && res.name==file){
-                console.log(res)          
-            }
-        });           
+        // data.forEach(res => {
+        //     //console.log(file)
+        //     if(res.type=='-' && res.name==file){
+        //         console.log(res)          
+        //     }
+        // });           
     })
     .catch(err => {
         console.log(err, 'catch error');
         return false
         
     });
+
     return res;
 }
 
