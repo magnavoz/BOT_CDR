@@ -8,17 +8,17 @@ const uploadfile = async(path,to,file,cn) =>{
     let res = "";
     await sftp.connect(cn).then(async() => {
         //return (sftp.list(to));
-        // let option = {
-        //     flags: 'w',  // w - write and a - append
-        //     encoding: null, // use null for binary files
-        //     mode: 0o666, // mode to use for created file (rwx)
-        //     autoClose: true // automatically close the write stream when finished
-        //   }
-        //   try {
-        //     sftp.mkdir(to, true).catch(err=>console.log('error: ',err.code));
-        //   }catch(err) {
-        //       console.log("error al crear directorio")
-        //   }
+        let option = {
+            flags: 'w',  // w - write and a - append
+            encoding: null, // use null for binary files
+            mode: 0o666, // mode to use for created file (rwx)
+            autoClose: true // automatically close the write stream when finished
+          }
+          try {
+            sftp.mkdir(to, true).catch(err=>console.log('error: ',err.code));
+          }catch(err) {
+              console.log("error al crear directorio")
+          }
         
         return await new Promise(resolve => {
             setTimeout(() => {
