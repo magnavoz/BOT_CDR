@@ -95,15 +95,31 @@ const login = async (COMPANY, D = null) => {
                 }
             );
         }
-    } 
-    
-    if(COMPANY == 'RECSA') {
+    }else{
+
         await page.goto(data.LINK
             , {
                 waitUntil: 'networkidle0',
             }
         );
-    }
+        
+    } 
+    
+    // if(COMPANY == 'RECSA') {
+    //     await page.goto(data.LINK
+    //         , {
+    //             waitUntil: 'networkidle0',
+    //         }
+    //     );
+    // }
+
+    // if(COMPANY == 'HDC') {
+    //     await page.goto(data.LINK
+    //         , {
+    //             waitUntil: 'networkidle0',
+    //         }
+    //     );
+    // }
 
     // await page.screenshot({ path: `./screenshots/github-profile.jpeg` });
     await screenShotAndSendTelegram(page, 'Reporte precargado');
