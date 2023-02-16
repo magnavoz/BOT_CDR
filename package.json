@@ -26,6 +26,6 @@
     "puppeteer-extra": "^3.2.3",
     "puppeteer-extra-plugin-user-preferences": "^2.3.1",
     "screenshot-desktop": "^1.12.7",
-    "ssh2-sftp-client": "^7.0.4"
+    "ssh2-sftp-client": "^8.0.0"
   }
 }
