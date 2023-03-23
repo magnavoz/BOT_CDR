@@ -215,8 +215,8 @@ const checkFile = async (data, D = null) => {
 
     //const oldPath = `cdrs_${year}${month}${date}_050000.csv`
     // console.log(oldPath)
-    const newPath = `C:/tmp/${data.COMPANY}/${year}/${month}/${date}/${year}${month}${date}.csv`
-    const directory = `C:/tmp/${data.COMPANY}/${year}/${month}/${date}/`
+    const newPath = `E:/${data.COMPANY}/${year}/${month}/${date}/${year}${month}${date}.csv`
+    const directory = `E:/${data.COMPANY}/${year}/${month}/${date}/`
     return await new Promise(resolve => {
 
         if (!fs.existsSync(directory)) {
@@ -264,7 +264,7 @@ const uploadFile = async (data, D = null) => {
             date = "01";            
         }
 
-        const path = `C:/tmp/${data.COMPANY}/${year}/${month}/${date}/${year}${month}${date}.csv`
+        const path = `E:/${data.COMPANY}/${year}/${month}/${date}/${year}${month}${date}.csv`
 
         if (data.COMPANY == "KOBSA") {
             return await uploadfile(path, `${data.FTP_FOLDER_MAIN}/${year}/${month}/`, `${year}${month}${date}.csv`, data.FTP_CN);

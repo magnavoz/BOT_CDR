@@ -1,0 +1,309 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	
+
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest.json">
+<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#00a4db">
+<meta name="apple-mobile-web-app-title" content="Digitalk Carrier Cloud">
+<meta name="application-name" content="Digitalk Carrier Cloud">
+<meta name="msapplication-TileColor" content="#ffffff">
+<meta name="msapplication-TileImage" content="/mstile-144x144.png">
+<meta name="theme-color" content="#ffffff">
+
+	
+	<link href="/dist/css/app.min.css?vERSIONtAG" rel="stylesheet" />
+
+	
+	<script src="/dist/js/vendor/jquery.bundle.min.js?vERSIONtAG"></script>
+	<script src="/dist/js/vendor/bootstrap.bundle.min.js?vERSIONtAG"></script>
+	<script src="/dist/js/vendor/qrcode.min.js?vERSIONtAG"></script>
+	<script src="/dist/js/digitalk.heap.min.js?vERSIONtAG"></script>
+
+	<script type="text/javascript">
+
+			InitHeap('2394195667');
+
+			$(function () {
+
+				$('[id^=VerificationCode]').keypress(validateNumber);
+
+				if (document.implementation.hasFeature("http://www.w3.org/TR/SVG11/feature#BasicStructure", "1.1") == false) {
+					$("#incompatibleBrowser").removeClass('d-none');
+					$("input").disable(true);
+				}
+				else {
+					$(document).off('submit', 'form');
+					$(document).on("submit", "form", function (e) {
+
+						e.preventDefault();
+
+						$('#LoginButton').text('Please wait...');
+						$('#SubmitButton').text('Please wait...');
+
+						IdentifyUserToHeap($("#Username").val(), 'MagnavozVP');
+						$("#UrlHash").val(window.location.hash);
+						var form = $(this);
+
+						var jqxhr = $.ajax(
+								{
+									url: form.attr('action'),
+									type: 'POST',
+									data: form.serialize(),
+									async: true,
+									statusCode: {
+										403: wrongCredentialsHandler,
+										409: wrongCredentialsHandler,
+										500: function (xhr) {
+											$('#LoginButton').text('Login');
+											$('#ErrorMessage500').removeClass('d-none');
+										}
+									},
+									success: function (data, textStatus, jqXHR) {
+										if(data.hasOwnProperty("returnUrl"))
+											Login(data, jqXHR);
+										else if(data.hasOwnProperty("shared2FAKey"))
+											Synchronisation(data, jqXHR);
+										else
+											Verification();
+									}
+								})
+							.fail(function (jqxhr, textStatus, error) {
+								console.log(error);
+							});
+					});
+					return false;
+				}
+			});
+
+			function wrongCredentialsHandler(jqXHR){
+				if($('#PageStatus').val() == 'Login'){
+					$('#LoginButton').text('Login');
+					if (typeof (jqXHR.responseJSON) !== "undefined" && jqXHR.responseJSON.hasOwnProperty("reset2FATimeout") && jqXHR.responseJSON.reset2FATimeout) {
+						$('#Reset2FATimeoutErrorMessage').removeClass('d-none');
+					}
+					else {
+						$('#ErrorMessage').removeClass('d-none');
+					}
+				} else {
+					$('#SubmitButton').text('Done');
+					$('#Error2FACodeMessage').removeClass('d-none');
+				}
+			}
+
+			function Synchronisation(data, jqXHR) {
+				$('#LoginPage').hide();
+
+				var shared2FAKey = data.shared2FAKey;
+				$('#PageStatus').val('Synchronisation');
+				if (shared2FAKey != '') {
+					$('#shared2FAKey').text(shared2FAKey.replace(/....(?=.)/g, '$&-'));
+
+					var qrcode = new QRCode(document.getElementById("qrcode"), {
+						width: 200,
+						height: 200,
+						correctLevel: QRCode.CorrectLevel.H
+					});
+
+					qrcode.makeCode('otpauth://totp/DIGITALK%20Carrier%20Cloud?secret=' + shared2FAKey);
+					$('#qrcode img').css('margin', '10px auto');
+					$('#SubmitButton').text('Done');
+					$('#Remember2FAVerificationLabel').hide();
+					$('#Remember2FAVerification').hide();
+					$('#SynchronisationPage').removeClass('d-none');
+					$('#container-2fa').removeClass('d-none');
+				}
+			}
+
+			function Verification() {
+				$('#PageStatus').val('Verification');
+				$('#LoginPage').hide();
+				$('#Remember2FAVerificationLabel').show();
+				$('#Remember2FAVerification').show();
+				$('#SubmitButton').text('Done');
+				$('#VerificationPage').removeClass('d-none');
+				$('#VerificationCode').focus();
+				$('#container-2fa').removeClass('d-none');
+			}
+
+			function Login(data, jqXHR) {
+				var arr = jqXHR.getResponseHeader("X-Permission").split(", ");
+				var permobj = {};
+				for (var x = 0; x < arr.length; x++)
+					permobj[arr[x].toLowerCase()] = true;
+
+				localStorage.setItem('permission', JSON.stringify(permobj));
+				localStorage.setItem('email', jqXHR.getResponseHeader("X-Email"));
+				localStorage.setItem('user', $("#Username").val().toLowerCase());
+				location.href = data.returnUrl;
+			}
+
+			function validateNumber(event) {
+				var key = window.event ? event.keyCode : event.which;
+				if (event.keyCode === 8 || event.keyCode === 9 || event.keyCode === 46 || (event.keyCode > 36 && event.keyCode < 41)) {
+					return true;
+				} else if ( key < 48 || key > 57 ) {
+					return false;
+				} else {
+					return true;
+				}
+			};
+	</script>
+</head>
+
+	<body>
+<form action="/Login?returnUrl=%2FReporting%2FCallDetailRecords%2FGetCDRs%3Ffrom%3D1665637200000%26to%3D1665720052676%26timeZoneOffsetMS%3D-18000000%26filter%3D%255B%257B%2522k%2522%253A%2522asig_carrier_group%2522%252C%2522o%2522%253A%2522%253D%2522%252C%2522v%2522%253A%255B%2522cc%2Bhdc%2522%255D%257D%255D%26columnsToExport%3D26%252C29%252C30%252C32%252C33%252C34%252C37%252C38%252C16%252C17%252C18%252C49%26fromEndDate%3Dfalse%26ExportTemplates%3D26%252C29%252C30%252C32%252C33%252C34%252C37%252C38%252C16%252C17%252C18%252C49" method="post">			<div class="mt-5">
+				<input data-val="true" data-val-required="The PageStatus field is required." id="PageStatus" name="PageStatus" type="hidden" value="Login" />
+
+				<div id="container-2fa" class="mx-auto px-4 px-md-0 d-none">
+					<img src="/dist/images/carriercloud_large.svg" class="w-100" alt="Digitalk carrier cloud logo" />
+
+					<div class="text-center mt-5">
+						<h1 class="border-0 text-dark d-block font-weight-normal">Welcome to Digitalk Carrier Cloud Manager</h1>
+					</div>
+
+					<div class="card dt-bg-gray-100 mt-3 border-0">
+						<div class="card-body">
+							<div id="SynchronisationPage" class="d-none">
+
+								<p>
+									Your account is protected with Two-Factor Authentication.<br />
+									You must use an authentication app on your mobile such as Google Authenticator or Microsoft Authenticator.
+								</p>
+
+								<h3 class="mt-3">1. Synchronise Authentication App</h3>
+								<p>
+									Synchronise your authentication app using the Authentication Key shown below.<br />
+									Some apps allow you to enter this key using a QR Code Reader.
+								</p>
+
+								<div class="text-center">
+									<h3 class="text-danger">Your Authentication Key:</h3>
+									<h3 id="shared2FAKey" class="text-danger"></h3>
+								</div>
+
+								<div id="qrcode" class="mt-2"></div>
+
+								<h3 class="mt-3">2. Generate Verification Code</h3>
+								<p>Generate a Verification Code using your synchronised authentication app.</p>
+
+								<h3 class="mt-3">3. Enter Verification Code</h3>
+								<span>Enter the Verification code in the field below for authentication.</span>
+							</div>
+
+							<div id="VerificationPage" class="d-none">
+								<h3>Enter a verification code</h3>
+								<p>Get a verification code from your authentication app</p>
+							</div>
+
+							<div class="w-50 mx-auto mt-3 text-center">
+								<input class="form-control" data-val="true" data-val-length="Verification Code must be no longer than 7 characters." data-val-length-max="7" id="VerificationCode" maxlength="6" name="VerificationCode" placeholder="Enter the 6-digit code" type="tel" value="" />
+
+								<div id="Error2FACodeMessage" class="mt-2 d-none">
+									<span class="field-validation-error">
+										Incorrect code, please try again.
+									</span>
+								</div>
+							</div>
+
+							<div class="mt-3 custom-control dt-custom-checkbox"><input class="dt-custom-control-input" data-val="true" data-val-required="The Don&#39;t ask again on this computer field is required." id="Remember2FAVerification" name="Remember2FAVerification" type="checkbox" value="true" /><input name="Remember2FAVerification" type="hidden" value="false" /><label class="dt-custom-control-label" for="Remember2FAVerification" id="Remember2FAVerificationLabel">Don't ask again on this computer</label></div>
+
+							<div class="text-right mt-3">
+								<button type="submit" class="btn dt-btn-primary" id="SubmitButton">
+									Done
+								</button>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<div id="LoginPage" class="mx-auto px-4 px-md-0">
+					<img src="/dist/images/carriercloud_large.svg" class="w-100 d-block" alt="Digitalk carrier cloud logo" />
+
+					<input id="UrlHash" name="UrlHash" type="hidden" value="" />
+					<div class="text-center mt-5">
+						<h1 class="border-0 text-dark d-block font-weight-normal">Welcome to Digitalk Carrier Cloud Manager</h1>
+					</div>
+
+					<div class="card dt-bg-gray-100 mt-3 border-0">
+						<div class="card-body">
+							<div class="text-center">
+								<div class="form-group dt-form-row">
+									<label class="col-3 col-form-label text-right dt-ws-nowrap" for="Username">Username</label>
+									<div class="col-9">
+										<input autofocus="autofocus" class="form-control" data-val="true" data-val-length="Username must be no longer than 80 characters." data-val-length-max="80" data-val-required="Username is required." id="Username" name="Username" type="text" value="" />
+										<span class="field-validation-valid" data-valmsg-for="Username" data-valmsg-replace="true"></span>
+									</div>
+								</div>
+
+								<div class="form-group dt-form-row">
+									<label class="col-3 col-form-label text-right dt-ws-nowrap" for="Password">Password</label>
+									<div class="col-9">
+										<input class="form-control" data-val="true" data-val-length="Password must be no longer than 128 characters." data-val-length-max="128" data-val-required="Password is required." id="Password" name="Password" type="password" value="" />
+										<span class="field-validation-valid" data-valmsg-for="Password" data-valmsg-replace="true"></span>
+									</div>
+								</div>
+
+								<div id="ErrorMessage" class="mt-3 d-none">
+									<span class="field-validation-error">
+										The username or password provided is invalid.
+									</span>
+								</div>
+								<div id="ErrorMessage500" class="mt-3 d-none">
+									<span class="field-validation-error">
+										Internal server error, please contact Digitalk support.
+									</span>
+								</div>
+								<div id="Reset2FATimeoutErrorMessage" class="mt-3 d-none">
+									<span class="field-validation-error">
+										Your 2-factor authentication has expired, please contact your administrator.
+									</span>
+								</div>
+
+								<div class="text-right mt-3">
+									<a class="btn btn-link" href="/ForgotPassword">Forgotten Password?</a>
+									<button type="submit" class="btn dt-btn-primary dt-wpx-100" id="LoginButton">
+										Login
+									</button>
+								</div>
+							</div>
+						</div>
+					</div>
+					
+
+					<div id="incompatiblebrowser" class="d-none">
+						<p>Incompatible Browser!<br />Digitalk recommends you use a modern web browser by upgrading to the latest version of:</p>
+						<a target="_blank" href="http://www.google.com/chrome">Google Chrome</a><br />
+						<a target="_blank" href="https://www.microsoft.com/microsoft-edge">Microsoft Edge</a><br />
+						<a target="_blank" href="http://www.mozilla.com/firefox">Mozilla Firefox</a><br />
+						<a target="_blank" href="http://www.apple.com/safari/download">Apple Safari for MacOS</a><br />
+					</div>
+
+					<div class="WebLoginVersion d-none">Version 26.1.8.27327</div>
+				</div>
+			</div>
+</form>	</body>
+</html>
+				<script type='text/javascript'>
+					if(window.opener) {
+						var href = window.opener.location.href;
+
+						window.opener.location='/Login?' + (href.split('?').length > 1 ? encodeURIComponent(href.split('?')[1]) : ('ReturnUrl=' + encodeURIComponent(href))); 
+						window.close(); 
+					} 
+					else if (window.parent && window.parent.location.href != window.location.href) {
+						var href = window.parent.location.href;
+
+						window.parent.location='/Login?' + (href.split('?').length > 1 ? encodeURIComponent(href.split('?')[1]) : ('ReturnUrl=' + encodeURIComponent(href)));
+					}
+					else if (window.location.href.indexOf('/Login') == -1) {
+						var href = window.location.href;
+
+						window.location='/Login?' + (href.split('?').length > 1 ? encodeURIComponent(href.split('?')[1]) : ('ReturnUrl=' + encodeURIComponent(href))); 
+					}
+				</script>
